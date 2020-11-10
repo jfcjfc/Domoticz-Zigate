@@ -140,10 +140,11 @@ class LoggingManagement:
         else:
             _txt = self.PluginHealth['Txt']
         _context = {
-                    'Time' : int(time.time()),
-                    'nwkid' : nwkid,
-                    'PluginHealth' : _txt,
-                    'message' : message
+                    'Time': int(time.time()),
+                    'Module': module,
+                    'nwkid': nwkid,
+                    'PluginHealth': _txt,
+                    'message': message
                 }
         if context is not None:
             _context['context'] = context.copy()
