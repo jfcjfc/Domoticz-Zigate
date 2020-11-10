@@ -73,6 +73,9 @@ def MajDomoDevice(self, Devices, NWKID, Ep, clusterID, value, Attribute_='', Col
             Domoticz.Error("Device %s not found !!!" %WidgetId)
             return
 
+        Switchtype = Devices[ DeviceUnit ].SwitchType
+        Subtype = Devices[ DeviceUnit ].SubType
+
         # DeviceUnit is the Device unit
         # WidgetEp is the Endpoint to which the widget is linked to
         # WidgetId is the Device ID
@@ -274,7 +277,6 @@ def MajDomoDevice(self, Devices, NWKID, Ep, clusterID, value, Attribute_='', Col
                 elif clusterID == 'fc40': # Legrand FIP
                     UpdateDevice_v2(self, Devices, DeviceUnit, nValue, sValue, BatteryLevel, SignalLevel)
  
-
             elif WidgetType == 'ThermoMode_2' and Attribute_ == '001c':
                 # Use by Tuya TRV
                 
@@ -287,7 +289,6 @@ def MajDomoDevice(self, Devices, NWKID, Ep, clusterID, value, Attribute_='', Col
                 sValue = SWITCH_LVL_MATRIX[ 'ThermoMode_2'][ value ][1]
                 self.log.logging( "Widget", "Log", "------>  Thermostat Mode 2 %s %s:%s" %(value, nValue, sValue), NWKID)
                 UpdateDevice_v2(self, Devices, DeviceUnit, nValue, sValue, BatteryLevel, SignalLevel)
-
 
             elif WidgetType == 'ThermoMode' and Attribute_ == '001c':
                 # value seems to come as int or str. To be fixed
@@ -424,18 +425,20 @@ def MajDomoDevice(self, Devices, NWKID, Ep, clusterID, value, Attribute_='', Col
                 UpdateDevice_v2(self, Devices, DeviceUnit, nValue, sValue, BatteryLevel, SignalLevel)
 
         if WidgetType not in ( 'ThermoModeEHZBRTS', ) and \
-            ( 
-                ( ClusterType in ( 'IAS_ACE', 'Alarm', 'Door', 'Switch', 'SwitchButton', 'AqaraOppleMiddle', 'Motion', 
+            (   ( ClusterType in ( 'IAS_ACE', 'Alarm', 'Door', 'Switch', 'SwitchButton', 'AqaraOppleMiddle', 'Motion', 
                                  'Ikea_Round_5b', 'Ikea_Round_OnOff', 'Vibration', 'OrviboRemoteSquare', 'Button_3', 'LumiLock') ) or \
                 ( ClusterType == WidgetType == 'DoorLock') or \
-                ( ClusterType == 'DoorLock' and WidgetType == 'Vibration')
-            ):
+                ( ClusterType == 'DoorLock' and WidgetType == 'Vibration') or \
+                ( ClusterType == 'FanControl' and WidgetType == 'FanControl') or \
+                ( 'ThermoMode' in ClusterType and WidgetType == 'PAC-MODE' ) or \
+                ( WidgetType == 'KF204Switch' and ClusterType in ( 'Switch', 'Door'))):
 
             # Plug, Door, Switch, Button ...
             # We reach this point because ClusterType is Door or Switch. It means that Cluster 0x0006 or 0x0500
             # So we might also have to manage case where we receive a On or Off for a LvlControl WidgetType like a dimming Bulb.
             self.log.logging( "Widget", "Debug", "------> Generic Widget for %s ClusterType: %s WidgetType: %s Value: %s" %(NWKID, WidgetType, ClusterType , value), NWKID)
                        
+
             if WidgetType == "DSwitch":
                 # double switch avec EP different 
                 value = int(value)
@@ -564,6 +567,7 @@ def MajDomoDevice(self, Devices, NWKID, Ep, clusterID, value, Attribute_='', Col
                     value = 100 - value
                     self.log.logging( "Widget", "Debug", "------>  Patching %s/%s Value: %s" %(NWKID, Ep,value), NWKID)
 
+                # nValue will depends if we are on % or not
                 if value == 0: 
                     nValue = 0
 
@@ -571,7 +575,10 @@ def MajDomoDevice(self, Devices, NWKID, Ep, clusterID, value, Attribute_='', Col
                     nValue = 1
 
                 else: 
-                    nValue = 2
+                    if Switchtype in ( 4, 15 ):
+                        nValue = 17
+                    else:
+                        nValue = 2
 
                 UpdateDevice_v2(self, Devices, DeviceUnit, nValue, str(value), BatteryLevel, SignalLevel)
 
@@ -900,7 +907,6 @@ def MajDomoDevice(self, Devices, NWKID, Ep, clusterID, value, Attribute_='', Col
 
         # Check if this Device belongs to a Group. In that case update group
         CheckUpdateGroup( self, NWKID, Ep,  clusterID )
-
 
 def CheckUpdateGroup( self, NwkId, Ep, ClusterId):
     

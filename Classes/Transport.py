@@ -540,16 +540,15 @@ class ZigateTransport(object):
                 AsciiMsg = binascii.hexlify(BinMsg).decode('utf-8')
                 self.statistics._received += 1
 
-                if self.pluginconf.pluginConf['ZiGateReactTime']:
+                if not self.pluginconf.pluginConf['ZiGateReactTime']:
+                    process_frame(self, AsciiMsg)
+                else:
                     start_time = time.time()
-
-                process_frame(self, AsciiMsg)
-                
-                if self.pluginconf.pluginConf['ZiGateReactTime']:
-                    timing = int( (time.time() - start_time )* 1000 )
+                    process_frame(self, AsciiMsg)                
+                    timing = int( (time.time() - start_time ) * 1000 )
                     self.statistics.add_rxTiming( timing )
 
-
+                    
     def check_timed_out_for_tx_queues(self):
         check_timed_out(self)
 
@@ -1497,7 +1496,7 @@ def process_msg_type8702(self, MsgData):
     MsgDataDestEp = MsgData[4:6]
     MsgDataDestMode = MsgData[6:8]
 
-    NWKID = IEEE = None
+    ExternSqn = NwkId = IEEE = None
     if MsgDataDestMode == '01':  # IEEE
         IEEE = MsgData[8:24]
         ExternSqn = MsgData[24:26]
@@ -1721,10 +1720,12 @@ def extract_nwk_infos_from_8002( frame ):
     MsgLength = frame[6:10]
     MsgCRC = frame[10:12]
 
-    if len(frame) >= 18:
-        # Payload
-        MsgData = frame[12:len(frame) - 4]
-        LQI = frame[len(frame) - 4: len(frame) - 2]
+    if len(frame) < 18:
+        return ( None, None, None , None )
+
+    # Payload
+    MsgData = frame[12:len(frame) - 4]
+    LQI = frame[len(frame) - 4: len(frame) - 2]
 
     ProfileId = MsgData[2:6]
     ClusterId = MsgData[6:10]
@@ -1803,8 +1804,8 @@ def buildframe_read_attribute_request( frame, Sqn, SrcNwkId, SrcEndPoint, Cluste
 
     buildPayload += '%02x' %(nbAttribute) + payloadOfAttributes
 
-    #Domoticz.Log("buildframe_read_attribute_request - NwkId: %s Ep: %s ClusterId: %s nbAttribute: %s Data: %s" 
-    #        %(SrcNwkId, SrcEndPoint, ClusterId, nbAttribute, Data))
+    Domoticz.Log("buildframe_read_attribute_request - NwkId: %s Ep: %s ClusterId: %s nbAttribute: %s Data: %s buildPayload: %s" 
+            %(SrcNwkId, SrcEndPoint, ClusterId, nbAttribute, Data, buildPayload))
 
     newFrame = '01' # 0:2
     newFrame += '0100' # 2:6   MsgType
